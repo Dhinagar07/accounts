@@ -1,39 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Input, List, Typography, Row, Col, Modal, Form, Button } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import 'antd/dist/reset.css'; // use 'antd/dist/antd.css' for Ant Design V3 or below
+import 'antd/dist/reset.css';
 import moment from 'moment';
-import './App.css'; // Create a CSS file for custom styles
+import axios from 'axios'; // Import your Axios instance
+import './App.css';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
-const { Search } = Input;
-
-const initialData = [
-  {
-    name: 'John Doe',
-    datetime: moment().subtract(1, 'days').format('YYYY-MM-DD HH:mm'),
-    price: '$100',
-  },
-  {
-    name: 'Jane Smith',
-    datetime: moment().subtract(2, 'days').format('YYYY-MM-DD HH:mm'),
-    price: '$150',
-  },
-  {
-    name: 'Alice Johnson',
-    datetime: moment().subtract(3, 'days').format('YYYY-MM-DD HH:mm'),
-    price: '$200',
-  },
-  {
-    name: 'Bob Brown',
-    datetime: moment().subtract(4, 'days').format('YYYY-MM-DD HH:mm'),
-    price: '$250',
-  },
-];
 
 const App = () => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -41,13 +18,36 @@ const App = () => {
   const [form] = Form.useForm();
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/account/list-accounts');
+      setData(response.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  const formatDateTime = (isoString) => {
+    return moment(isoString).format('MMMM Do YYYY, h:mm:ss A');
+  };
+
   const onSearch = (value) => {
-    const filteredData = initialData.filter(item =>
+  if (value.trim() === '') {
+    fetchAccounts(); // Reload all data when the search input is empty
+    setSearchText('');
+  } else {
+    const filteredData = data.filter(item =>
       item.name.toLowerCase().includes(value.toLowerCase())
     );
     setData(filteredData);
     setSearchText(value);
-  };
+  }
+};
+
 
   const showEditModal = (item) => {
     setCurrentItem(item);
@@ -61,29 +61,28 @@ const App = () => {
     setIsAddModalVisible(true);
   };
 
-  const handleEditOk = () => {
-    form
-      .validateFields()
-      .then(values => {
-        setData(data.map(item => (item.name === currentItem.name ? { ...currentItem, ...values } : item)));
-        setIsEditModalVisible(false);
-      })
-      .catch(info => {
-        console.log('Validate Failed:', info);
-      });
+  const handleEditOk = async () => {
+    try {
+      const values = await form.validateFields();
+      values.id = currentItem.id;
+      console.log(values, currentItem);
+      await axios.put(`http://localhost:3001/account/update-account/${currentItem.id}`, values);
+      fetchAccounts(); // Refresh the data
+      setIsEditModalVisible(false);
+    } catch (error) {
+      console.error('Validate Failed:', error);
+    }
   };
 
-  const handleAddOk = () => {
-    form
-      .validateFields()
-      .then(values => {
-        const newItem = { ...values, datetime: moment().format('YYYY-MM-DD HH:mm') };
-        setData([...data, newItem]);
-        setIsAddModalVisible(false);
-      })
-      .catch(info => {
-        console.log('Validate Failed:', info);
-      });
+  const handleAddOk = async () => {
+    try {
+      const values = await form.validateFields();
+      await axios.post('http://localhost:3001/account/create-account', values);
+      fetchAccounts(); // Refresh the data
+      setIsAddModalVisible(false);
+    } catch (error) {
+      console.error('Validate Failed:', error);
+    }
   };
 
   const handleCancel = () => {
@@ -91,9 +90,19 @@ const App = () => {
     setIsAddModalVisible(false);
   };
 
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:3001/account/delete-account/${currentItem.id}`);
+      fetchAccounts(); // Refresh the data
+      setIsEditModalVisible(false);
+    } catch (error) {
+      console.error('Delete Failed:', error);
+    }
+  };
+
   const calculateTotalPrice = () => {
     return data.reduce((total, item) => {
-      const price = parseFloat(item.price.replace('$', ''));
+      const price = parseInt(item.price);
       return total + price;
     }, 0).toFixed(2);
   };
@@ -103,7 +112,7 @@ const App = () => {
       <Header className="header" style={{ backgroundColor: '#195190', color: '#fff' }}>
         <Row justify="space-between" align="middle" className="header-row">
           <Col>
-            <Text strong className="header-text">Total: ${calculateTotalPrice()}</Text>
+            <Text strong className="header-text">Total: ₹{calculateTotalPrice()}</Text>
           </Col>
           <Col flex="auto" className="header-search" style={{ borderColor: '#2c7ab8', borderWidth: '2px', borderStyle: 'solid' }}>
             <div className="mobile-icons">
@@ -145,9 +154,9 @@ const App = () => {
             enterButton={false}
             size="large"
             value={searchText}
-            onChange={e =>onSearch(e.target.value)}
+            onChange={e => onSearch(e.target.value)}
             className="search-input mobile-search"
-            style={{ borderColor: '#2c7ab8', borderWidth: '2px', borderStyle: 'solid',color: 'darkblue', backgroundColor:'#fff' }}
+            style={{ borderColor: '#2c7ab8', borderWidth: '2px', borderStyle: 'solid', color: 'darkblue', backgroundColor: '#fff' }}
           />
         )}
       </Header>
@@ -167,11 +176,11 @@ const App = () => {
                       title={<Text strong style={{ fontSize: '16px', fontWeight: 'bolder' }}>{item.name}</Text>}
                       description={
                         <>
-                          <Text style={{ fontSize: '14px', color: '#888',fontWeight: 'bold' }}>{item.datetime}</Text>
+                          <Text style={{ fontSize: '14px', color: '#888', fontWeight: 'bold' }}>{formatDateTime(item.updatedAt)}</Text>
                         </>
                       }
                     />
-                    <Text type="secondary" style={{ marginLeft: 'auto', fontSize: '16px', color: '#195190',fontWeight: 'bold' }}>{item.price}</Text>
+                    <Text type="secondary" style={{ marginLeft: 'auto', fontSize: '16px', color: '#195190', fontWeight: 'bold' }}>₹{item.price}</Text>
                   </List.Item>
                 )}
                 style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)', borderColor: '#2c7ab8', borderWidth: '2px', borderStyle: 'solid' }}
@@ -180,12 +189,23 @@ const App = () => {
           </Row>
         </div>
       </Content>
-      
+
       <Modal
         title="Update Item"
         visible={isEditModalVisible}
         onOk={handleEditOk}
         onCancel={handleCancel}
+        footer={[
+          <Button key="back" onClick={handleCancel}>
+            Cancel
+          </Button>,
+          <Button key="delete" type="danger" onClick={handleDelete}>
+            Delete
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleEditOk}>
+            Update
+          </Button>,
+        ]}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -233,4 +253,3 @@ const App = () => {
 };
 
 export default App;
-
