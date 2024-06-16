@@ -10,6 +10,7 @@ const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 
 const App = () => {
+  const ip='10.13.16.156:3001';
   const [data, setData] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -24,7 +25,7 @@ const App = () => {
 
   const fetchAccounts = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/account/list-accounts');
+      const response = await axios.get('http://'+ip+'/account/list-accounts');
       setData(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -66,7 +67,7 @@ const App = () => {
       const values = await form.validateFields();
       values.id = currentItem.id;
       console.log(values, currentItem);
-      await axios.put(`http://localhost:3001/account/update-account/${currentItem.id}`, values);
+      await axios.put(`http://`+ip+`/account/update-account/${currentItem.id}`, values);
       fetchAccounts(); // Refresh the data
       setIsEditModalVisible(false);
     } catch (error) {
@@ -77,7 +78,7 @@ const App = () => {
   const handleAddOk = async () => {
     try {
       const values = await form.validateFields();
-      await axios.post('http://localhost:3001/account/create-account', values);
+      await axios.post('http://'+ip+'/account/create-account', values);
       fetchAccounts(); // Refresh the data
       setIsAddModalVisible(false);
     } catch (error) {
@@ -92,7 +93,7 @@ const App = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3001/account/delete-account/${currentItem.id}`);
+      await axios.delete(`http://`+ip+`/account/delete-account/${currentItem.id}`);
       fetchAccounts(); // Refresh the data
       setIsEditModalVisible(false);
     } catch (error) {
@@ -160,7 +161,7 @@ const App = () => {
           />
         )}
       </Header>
-      <Content style={{ padding: '0 20px', marginTop: isSearchVisible ? '50px' : '0' }}>
+      <Content style={{ padding: '0 4px', marginTop: isSearchVisible ? '50px' : '0' }}>
         <div className="site-layout-content" style={{ marginTop: '20px' }}>
           <Row justify="center">
             <Col xs={24} sm={24} md={20} lg={16}>
